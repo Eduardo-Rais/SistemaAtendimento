@@ -11,6 +11,18 @@ public class FilaDinamica<T> implements QueueADT<T>{
         this.tamanho = 0;
     }
 
+    public No getComeco() {
+        return comeco;
+    }
+
+    public No getFim() {
+        return fim;
+    }
+
+    public int getTamanho() {
+        return tamanho;
+    }
+
     @Override
     public boolean enqueue(T item) {
         No novo = new No(item);

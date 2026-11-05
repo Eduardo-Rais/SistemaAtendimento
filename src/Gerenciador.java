@@ -1,6 +1,5 @@
 import filas.FilaDinamica;
 import pilha.PilhaDinamica;
-
 import java.util.Random;
 
 public class Gerenciador {
@@ -13,6 +12,7 @@ public class Gerenciador {
     private int contador = 0;
     private int numeradorN = 0;
     private int numeradorP = 0;
+    private int desistencias = 0;
     private Random random = new Random();
 
     public Gerenciador(FilaDinamica<String> senhaNormais, FilaDinamica<String> senhasPrioritarias) {
@@ -75,19 +75,19 @@ public class Gerenciador {
 
     public void aguardandoAtendimento(){
         int esperando = senhasNormais.size() + senhasPrioritarias.size();
-        System.out.printf("Tem %d senhas arguadando atendimento", esperando);
-        System.out.println();
-        System.out.printf("%d normais e %d prioritárias",  senhasNormais.size(), senhasPrioritarias.size() );
-    }
-
-    public void menu(){
-        System.out.println("----- Menu do Sistema -----");
-        System.out.println("O que deseja fazer?");
-        System.out.println("1. Sortear senha");
-        System.out.println("2. Atender senha");
-        System.out.println("3. Desativar Posto");
-        System.out.println("4. Ativar Posto");
-        System.out.println("0. Sair");
+        Posto proximo = primeiroPostoLivre();
+        System.out.printf("Tem %d senhas arguadando atendimento: %d normais e %d prioritárias\n", esperando, senhasNormais.size(), senhasPrioritarias.size());
+        if (proximo != null) {
+            System.out.printf("A próxima senha irá para o posto: %s\n", proximo.getNome());
+        } else {
+            System.out.println("A próxima senha irá aguardar: todos os postos estão ocupados");
+        }
+        System.out.println("Postos:" + fila);
+        String[] prox = proximasDuas();
+        System.out.println("Próximas duas: "
+                + (prox[0] != null ? prox[0] : "-") + ", "
+                + (prox[1] != null ? prox[1] : "-"));
+        System.out.printf("Atendidos: %d | Desistentes: %d\n", atendidos.size(), desistencias);
     }
 
     public void verificarAtivos(){
@@ -103,15 +103,37 @@ public class Gerenciador {
 
     public void desativarPosto(int posicao){
        if(postosAtivos >3) {
-           fila.search(posicao).setEstado("Desativado");
+           fila.search(posicao).setAtivo(false);
+           fila.search(posicao).setEstado("Ocupado");
            postosAtivos--;
        } else{ System.out.println("Erro não podemos ter menos de 3 postos ativos!"); }
     }
 
     public void ativarPosto(int posicao){
-        if(fila.search(posicao).getEstado().equals("Desativado")){
-            fila.search(posicao).setEstado("ativado");
+        if(!fila.search(posicao).isAtivo()){
+            fila.search(posicao).setAtivo(true);
+            fila.search(posicao).setEstado("Livre");
         }
+    }
+
+    public Posto primeiroPostoLivre() {
+        for (int i = 0; i < fila.size(); i++) {
+            Posto p = fila.search(i);
+            if (p.isAtivo() && p.getEstado().equals("Livre")) {
+                return p;
+            }
+        }
+        return null; // nenhum posto livre
+    }
+
+    public Posto primeiroPostoOcupado() {
+        for (int i = 0; i < fila.size(); i++) {
+            Posto p = fila.search(i);
+            if (p.isAtivo() && p.getEstado().equals("Ocupado")) {
+                return p;
+            }
+        }
+        return null; // nenhum posto livre
     }
 
     public void inserirSenhaNormal(String senha){
@@ -146,10 +168,12 @@ public class Gerenciador {
                 String senha = senhasPrioritarias.front();
                 senhasPrioritarias.dequeue();
                 System.out.printf("A senha %s desistiu",  senha);
+                desistencias++;
             } else {
                 String senha = senhasNormais.front();
                 senhasNormais.dequeue();
                 System.out.printf("A senha %s desistiu",  senha);
+                desistencias++;
             }
         }
     }
@@ -157,22 +181,75 @@ public class Gerenciador {
     public void removerSenhaNormal() {
         String senha = this.senhasNormais.dequeue();
         System.out.println(senha);
-        this.atendidos.push(senha);
+        if(senha != null)
+            this.atendidos.push(senha);
+        else
+            System.out.println("Nenhuma senha encontrada!");
     }
 
     public void removerSenhaPrioritario() {
         String senha = this.senhasPrioritarias.dequeue();
         System.out.println(senha);
-        this.atendidos.push(senha);
+        if(senha != null)
+            this.atendidos.push(senha);
+        else
+            System.out.println("Nenhum senha encontrada!");
     }
 
-    public void atenderSenha() {
-        if (contador < 2) {
-            removerSenhaNormal();
+    private boolean usarNormal() {
+        boolean temN = !senhasNormais.isEmpty();
+        boolean temP = !senhasPrioritarias.isEmpty();
+        return (contador < 2 && temN) || !temP;
+    }
+
+    public boolean atenderSenha() {
+        // Verifica se tem senha para atender
+        if (senhasNormais.isEmpty() && senhasPrioritarias.isEmpty()) return false;
+
+        // 2. Verifica se há um posto livre
+        Posto p = primeiroPostoLivre();
+        if (p == null) return false;
+
+        // Se 1 e 2 passarem aí atende a senha
+        String senha;
+        if (usarNormal()) {
+            senha = senhasNormais.dequeue();
             contador++;
         } else {
-            removerSenhaPrioritario();
+            senha = senhasPrioritarias.dequeue();
             contador = 0;
         }
+
+        atendidos.push(senha);
+        p.setEstado("Ocupado");
+        p.setSenha(senha);
+        System.out.printf("Senha: %s será atendida pelo posto %s\n", senha, p.getNome());
+        return true;
+    }
+
+    public String[] proximasDuas() {
+        String[] proximas = new String[2];
+        int c = contador;      // cópia: não mexe no contador real
+        int idxN = 0;          // quantas normais "já foram vistas"
+        int idxP = 0;          // quantas prioritárias "já foram vistas"
+
+        for (int i = 0; i < 2; i++) {
+            boolean temN = idxN < senhasNormais.size();
+            boolean temP = idxP < senhasPrioritarias.size();
+
+            if (!temN && !temP) break;   // acabaram as senhas
+
+            // mesma regra do atenderSenha()
+            boolean usaNormal = (c < 2 && temN) || !temP;
+
+            if (usaNormal) {
+                proximas[i] = senhasNormais.search(idxN++);
+                c++;
+            } else {
+                proximas[i] = senhasPrioritarias.search(idxP++);
+                c = 0;
+            }
+        }
+        return proximas;
     }
 }

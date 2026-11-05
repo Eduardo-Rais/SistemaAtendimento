@@ -9,6 +9,10 @@ public class PilhaDinamica<T> implements StackADT<T> {
         this.tamanho = 0;
     }
 
+    public No<T> getTopo() {
+        return topo;
+    }
+
     @Override
     public boolean push(T elemento){
         No<T> novo = new No<T>(elemento);
