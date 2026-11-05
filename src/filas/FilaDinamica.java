@@ -74,6 +74,18 @@ public class FilaDinamica<T> implements QueueADT<T>{
         return -1;
     }
 
+    public T search(int posicao){
+        No<T> atual = this.comeco;
+        for (int i = 0; i < this.tamanho; i++) {
+            if(i == posicao){
+                return atual.getElemento();
+            }
+            atual = atual.getProximo();
+        }
+        System.out.println("Posição não encontrada!");
+        return null;
+    }
+
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder("[início] ");

@@ -8,7 +8,7 @@ public class Posto {
     public Posto(String nome, String estado) {
         this.nome = nome;
         this.estado = estado;
-        this.ativo = false;
+        this.ativo = true;
     }
 
     //Getters e Setters
@@ -42,8 +42,8 @@ public class Posto {
         this.ativo = true;
     }
 
-    public void desativarPosto(){
-        this.ativo = false;
+    public String toString(){
+        return nome + " " + estado;
     }
 
 }
